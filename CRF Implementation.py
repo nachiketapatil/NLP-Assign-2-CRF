@@ -28,8 +28,8 @@ from collections import defaultdict
 with open('classifier.pkl','rb') as file:
     model = pickle.load(file)
 
-#nltk.download('brown')
-#nltk.download('universal_tagset')
+nltk.download('brown')
+nltk.download('universal_tagset')
 dataset_crf = list(nltk.corpus.brown.tagged_sents(tagset = "universal"))
 dataset_hmm = list(nltk.corpus.brown.tagged_sents(tagset = "universal"))
 
