@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import nltk
 import sklearn
 import sklearn_crfsuite
-import scipy.stats
 import math, string, re
 import seaborn as sns
 import pickle
@@ -13,20 +12,12 @@ import streamlit as st
 from sklearn.metrics import make_scorer
 from sklearn.metrics import accuracy_score
 from sklearn_crfsuite.utils import flatten
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import RandomizedSearchCV
 from sklearn_crfsuite import scorers
 from sklearn_crfsuite import metrics
-from itertools import chain
-from sklearn.preprocessing import MultiLabelBinarizer
 from random import shuffle
 from time import time
-from sklearn_crfsuite.metrics import flat_accuracy_score, flat_precision_score, flat_recall_score, flat_f1_score, flat_fbeta_score
 from sklearn.metrics import confusion_matrix
 from collections import defaultdict
-
-with open('classifier.pkl','rb') as file:
-    model = pickle.load(file)
 
 nltk.download('brown')
 nltk.download('universal_tagset')
@@ -75,7 +66,7 @@ def training(dataset):
 
 def preprocess_sent(sent):
     words = sent.split()
-    exception_punc = ['\'', '-']
+    exception_punc = ['\'', '-', '.']
     proc_words = []
     for w in words:
         if (w == " "):
@@ -164,13 +155,14 @@ def Viterbi_decoder(t_mat, e_mat, sent):
 
 tm, em = training(dataset_hmm)
 
+# Define a function to extract features for each word in a sentence
 def word2features(sent, i):
     word = sent[i]
 
     features = {
         'bias': 1.0,
         'word': word,
-        'word_length': len(word),
+        'len(word)': len(word),
         'word[:4]': word[:4],
         'word[:3]': word[:3],
         'word[:2]': word[:2],
@@ -186,7 +178,7 @@ def word2features(sent, i):
         word1 = sent[i-1]
         features.update({
             '-1:word': word1,
-            '-1:word_length': len(word1),
+            '-1:len(word)': len(word1),
             '-1:word.lower()': word1.lower(),
             '-1:word.stemmed': re.sub(r'(.{2,}?)([aeiougyn]+$)',r'\1', word1.lower()),
             '-1:word[:3]': word1[:3],
@@ -199,11 +191,25 @@ def word2features(sent, i):
     else:
         features['BOS'] = True
 
+    if i > 1:
+        word2 = sent[i-2]
+        features.update({
+            '-2:word': word2,
+            '-2:len(word)': len(word2),
+            '-2:word.lower()': word2.lower(),
+            '-2:word[:3]': word2[:3],
+            '-2:word[:2]': word2[:2],
+            '-2:word[-3:]': word2[-3:],
+            '-2:word[-2:]': word2[-2:],
+            '-2:word.isdigit()': word2.isdigit(),
+            '-2:word.ispunctuation': (word2 in string.punctuation),
+        })
+
     if i < len(sent)-1:
         word1 = sent[i+1]
         features.update({
             '+1:word': word1,
-            '+1:word_length': len(word1),
+            '+1:len(word)': len(word1),
             '+1:word.lower()': word1.lower(),
             '+1:word[:3]': word1[:3],
             '+1:word[:2]': word1[:2],
@@ -215,9 +221,22 @@ def word2features(sent, i):
 
     else:
         features['EOS'] = True
+    if i < len(sent) - 2:
+        word2 = sent[i+2]
+        features.update({
+            '+2:word': word2,
+            '+2:len(word)': len(word2),
+            '+2:word.lower()': word2.lower(),
+            '+2:word.stemmed': re.sub(r'(.{2,}?)([aeiougyn]+$)',r'\1', word2.lower()),
+            '+2:word[:3]': word2[:3],
+            '+2:word[:2]': word2[:2],
+            '+2:word[-3:]': word2[-3:],
+            '+2:word[-2:]': word2[-2:],
+            '+2:word.isdigit()': word2.isdigit(),
+            '+2:word.ispunctuation': (word2 in string.punctuation),
+        })
 
     return features
-
 
 def sent2features(sent):
     return [word2features(sent, i) for i in range(len(sent))]
@@ -228,6 +247,8 @@ def sent2labels(sent):
 def sent2tokens(sent):
     return [word[0] for word in sent]
 
+with open('crf.pkl','rb') as file:
+    model = pickle.load(file)
 
 
 st.title("POS Tagging with HMM and CRF")
