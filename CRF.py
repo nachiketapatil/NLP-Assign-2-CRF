@@ -64,22 +64,36 @@ def training(dataset):
 
     return transition_mat, emission_mat
 
+def removePeriod(word):
+    exception_words = ["mr.", "mrs.", "ms.", "dr."]
+    if word in exception_words:
+        return word
+    res = ""
+    for i in range(len(word)):
+        if (word[i] != '.'):
+            res += word[i]
+    return res
+
 def preprocess_sent(sent):
     words = sent.split()
-    exception_punc = ['\'', '-', '.', '`', '/', '\\', '$']
+    if (words[-1][-1] == '.'):
+        words[-1] = words[-1][:-1]
+        words.append('.')
     proc_words = []
-    
-    for w in words:
+    exception_punc = ['\'', '-', '`', '/', '\\', '$', '.']
+    n = len(words)
+    for i in range(n):
+        w = words[i]
         if (w == " "):
             continue
         else:
             if (w != "I"):
-                w = w.lower()
-                
+                w = w.lower()  
             # Replace formatted numbers with the same number but without commas
             w = re.sub(r'(\d{1,3})(,\d{3})+', lambda m: m.group(0).replace(',', ''), w)
             if (w[0] == "$"):
                 w = w[1:]
+            w = removePeriod(w)
             s = 0
             n = len(w)
             for i in range(n):
