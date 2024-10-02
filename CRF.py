@@ -66,14 +66,20 @@ def training(dataset):
 
 def preprocess_sent(sent):
     words = sent.split()
-    exception_punc = ['\'', '-', '.']
+    exception_punc = ['\'', '-', '.', '`', '/', '\\', '$']
     proc_words = []
+    
     for w in words:
         if (w == " "):
             continue
         else:
             if (w != "I"):
                 w = w.lower()
+                
+            # Replace formatted numbers with the same number but without commas
+            w = re.sub(r'(\d{1,3})(,\d{3})+', lambda m: m.group(0).replace(',', ''), w)
+            if (w[0] == "$"):
+                w = w[1:]
             s = 0
             n = len(w)
             for i in range(n):
@@ -82,16 +88,19 @@ def preprocess_sent(sent):
                 elif (w[i] not in exception_punc):
                     proc_words.append(w[s:i])
                     proc_words.append(w[i])
-                    s = i+1
+                    s = i + 1
             if (s < n):
                 proc_words.append(w[s:])
-    if (proc_words[-1].isalnum()):
+    
+    if (proc_words and proc_words[-1].isalnum()):
         proc_words.append(".")
-    proc_words[0] = proc_words[0].capitalize()
-    for ele in proc_words:
-        if (ele == ''):
-            proc_words.remove(ele)
-    return (proc_words)
+    if proc_words:
+        proc_words[0] = proc_words[0].capitalize()
+    
+    # Remove empty strings from the list
+    proc_words = [ele for ele in proc_words if ele != '']
+    
+    return proc_words
 
 def Viterbi_decoder(t_mat, e_mat, sent):
     em_min = np.array(e_mat).min()
